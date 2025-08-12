@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CRC Screening Race</title>
+<style>
+  body {
+    margin: 0;
+    background: #f0f8ff;
+    font-family: Arial, sans-serif;
+    text-align: center;
+    user-select: none;
+  }
+  h1 {
+    color: #004aad;
+    margin-top: 10px;
+  }
+  #gameArea {
+    position: relative;
+    margin: 0 auto;
+    background: #cce6ff;
+    overflow: hidden;
+    border: 3px solid #004aad;
+    width: 400px;
+    height: 600px;
+  }
+  .player {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    cursor: pointer;
+  }
+  .entity {
+    position: absolute;
+    width: 50px;
+    height: 30px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: bold;
+    color: #fff;
+    user-select: none;
+    pointer-events: none;
+  }
+  .positive {
+    background-color: #028a0f;
+  }
+  .negative {
+    background-color: #d12727;
+  }
+  #score, #timer {
+    font-size: 20px;
+    margin: 5px;
+  }
+  #leaderboard {
+    margin-top: 10px;
+  }
+  #playAgainBtn {
+    margin-top: 15px;
+    padding: 8px 16px;
+    font-size: 16px;
+    background-color: #004aad;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    display: none;
+  }
+  #playAgainBtn:hover {
+    background-color: #00307d;
+  }
+  /* Cologuard box SVG styles */
+  svg.cologuard-box {
+    width: 60px;
+    height: 60px;
+    display: block;
+  }
+</style>
+</head>
+<body>
+<h1>CRC Screening Race</h1>
+<div id="score">Score: 0</div>
+<div id="timer">Time: 0s</div>
+<div id="gameArea"></div>
+<button id="playAgainBtn">Play Again</button>
+<div id="leaderboard">
+  <h3>Leaderboard</h3>
+  <ol id="scoresList"></ol>
+</div>
+
+<script>
+  const gameArea = document.getElementById("gameArea");
+  const scoreDisplay = document.getElementById("score");
+  const timerDisplay = document.getElementById("timer");
+  const scoresList = document.getElementById("scoresList");
+  const playAgainBtn = document.getElementById("playAgainBtn");
+
+  const gameWidth = 400;
+  const gameHeight = 600;
+  const playerWidth = 60;
+  const playerHeight = 60;
+  let playerX = (gameWidth - playerWidth) / 2;
+  const playerY = gameHeight - playerHeight - 10;
+  let score = 0;
+  let timeElapsed = 0;
+  let gameInterval;
+  let spawnInterval;
+  let timerInterval;
+  let entities = [];
+  let gameRunning = false;
+  const maxScore = 5000;
+
+  const positiveItems = ["INNOVATION", "INTEGRITY", "ACCOUNTABILITY", "TEAMWORK", "QUALITY"];
+  const negativeItems = ["Fit Test", "Scope"];
+
+  // Create player element with SVG inside
+  const player = document.createElement("div");
+  player.classList.add("player");
+  player.style.left = `${playerX}px`;
+  player.style.top = `${playerY}px`;
+  player.style.bottom = "10px";
+
+  player.innerHTML = `
+    <svg class="cologuard-box" viewBox="0 0 100 100" aria-label="Cologuard box">
+      <rect x="5" y="15" width="90" height="70" rx="8" fill="#0b66c3" />
+      <rect x="10" y="20" width="80" height="60" rx="6" fill="#fff" />
+      <text
+        x="50" y="55" text-anchor="middle"
+        font-weight="700" font-size="28" fill="#0b66c3"
+        font-family="Arial, Helvetica, sans-serif"
+      >CG</text>
+    </svg>
+  `;
+  gameArea.appendChild(player);
+
+  function startGame() {
+    // Reset game state
+    score = 0;
+    timeElapsed = 0;
+    entities.forEach(e => gameArea.removeChild(e));
+    entities = [];
+    gameRunning = true;
+    playAgainBtn.style.display = "none";
+    scoreDisplay.textContent = `Score: ${score}`;
+    timerDisplay.textContent = `Time: ${timeElapsed}s`;
+
+    playerX = (gameWidth - playerWidth) / 2;
+    player.style.left = `${playerX}px`;
+
+    gameInterval = setInterval(updateGame, 20);
+    spawnInterval = setInterval(spawnEntity, 800);
+    timerInterval = setInterval(() => {
+      timeElapsed++;
+      timerDisplay.textContent = `Time: ${timeElapsed}s`;
+      if (timeElapsed >= 150 || score >= maxScore) {
+        endGame();
+      }
+    }, 1000);
+  }
+
+  function spawnEntity() {
+    const entity = document.createElement("div");
+    const isPositive = Math.random() < 0.6;
+    const xPos = Math.random() * (gameWidth - 50);
+    entity.classList.add("entity");
+    entity.classList.add(isPositive ? "positive" : "negative");
+    entity.style.left = `${xPos}px`;
+    entity.style.top = `-30px`;
+    entity.dataset.speed = isPositive ? 3 : 4.5;
+    entity.textContent = isPositive
+      ? positiveItems[Math.floor(Math.random() * positiveItems.length)]
+      : negativeItems[Math.floor(Math.random() * negativeItems.length)];
+    gameArea.appendChild(entity);
+    entities.push(entity);
+  }
+
+  function updateGame() {
+    // Move entities down
+    for (let i = entities.length - 1; i >= 0; i--) {
+      const entity = entities[i];
+      let top = parseFloat(entity.style.top);
+      top += parseFloat(entity.dataset.speed);
+      entity.style.top = `${top}px`;
+
+      // Remove if out of bounds
+      if (top > gameHeight) {
+        gameArea.removeChild(entity);
+        entities.splice(i, 1);
+        continue;
+      }
+
+      // Collision detection with player
+      const entityLeft = parseFloat(entity.style.left);
+      const entityRight = entityLeft + 50;
+      const entityTop = top;
+      const entityBottom = entityTop + 30;
+
+      const playerLeft = playerX;
+      const playerRight = playerX + playerWidth;
+      const playerTop = playerY;
+      const playerBottom = playerTop + playerHeight;
+
+      const horizontalOverlap = entityRight > playerLeft && entityLeft < playerRight;
+      const verticalOverlap = entityBottom > playerTop && entityTop < playerBottom;
+
+      if (horizontalOverlap && verticalOverlap) {
+        if (entity.classList.contains("positive")) {
+          score += 200;
+          if (score > maxScore) score = maxScore;
+        } else {
+          score -= 150;
+          if (score < 0) score = 0;
+        }
+        scoreDisplay.textContent = `Score: ${score}`;
+        gameArea.removeChild(entity);
+        entities.splice(i, 1);
+      }
+    }
+  }
+
+  function endGame() {
+    clearInterval(gameInterval);
+    clearInterval(spawnInterval);
+    clearInterval(timerInterval);
+    gameRunning = false;
+    saveScore(score);
+    alert(`Game Over! Final Score: ${score}`);
+    playAgainBtn.style.display = "inline-block";
+  }
+
+  function saveScore(finalScore) {
+    let scores = JSON.parse(localStorage.getItem("crcRaceScores")) || [];
+    scores.push(finalScore);
+    scores.sort((a, b) => b - a);
+    scores = scores.slice(0, 5);
+    localStorage.setItem("crcRaceScores", JSON.stringify(scores));
+    updateLeaderboard();
+  }
+
+  function updateLeaderboard() {
+    let scores = JSON.parse(localStorage.getItem("crcRaceScores")) || [];
+    scoresList.innerHTML = "";
+    scores.forEach((s) => {
+      const li = document.createElement("li");
+      li.textContent = s;
+      scoresList.appendChild(li);
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (!gameRunning) return;
+    if (e.key === "ArrowLeft" || e.key.toLowerCase() === "a") {
+      playerX -= 20;
+      if (playerX < 0) playerX = 0;
+      player.style.left = `${playerX}px`;
+    } else if (e.key === "ArrowRight" || e.key.toLowerCase() === "d") {
+      playerX += 20;
+      if (playerX > gameWidth - playerWidth) playerX = gameWidth - playerWidth;
+      player.style.left = `${playerX}px`;
+    }
+  });
+
+  playAgainBtn.addEventListener("click", () => {
+    if (!gameRunning) startGame();
+  });
+
+  updateLeaderboard();
+  startGame();
+</script>
+</body>
+</html>
